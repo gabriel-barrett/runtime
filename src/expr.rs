@@ -20,6 +20,7 @@ pub enum Atom {
     Lit(usize),
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Operation {
     // Arithmetic
     Add,
