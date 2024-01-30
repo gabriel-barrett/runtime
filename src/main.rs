@@ -1,5 +1,6 @@
 mod expr;
 mod lexer;
+mod pretty;
 
 use lexer::Scanner;
 fn main() {
