@@ -1,9 +1,11 @@
 mod expr;
 mod lexer;
+mod module;
 mod parser;
 mod pretty;
 
 use lexer::Scanner as LexerScanner;
+use module::Module;
 use parser::Scanner as ParserScanner;
 
 static SOURCE: &str = "
@@ -41,5 +43,7 @@ fn main() {
     let tokens = lexer_scanner.map(|m| m.unwrap());
     let parser_scanner = ParserScanner::new(tokens);
     let definitions = parser_scanner.map(|m| m.unwrap());
-    definitions.for_each(|def| println!("{:?}", def.pretty()));
+    let module = Module::new(definitions);
+    let top = module.toplevel().iter();
+    top.for_each(|(_, def)| println!("{:?}", def.pretty()));
 }
