@@ -101,7 +101,7 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
         self.expect_token(&Token::Paren(Bracket::LBrace))?;
         let body = self.parse_expr()?;
         self.expect_token(&Token::Paren(Bracket::RBrace))?;
-        Ok(Definition::new(name, args, body))
+        Ok(Definition { name, args, body })
     }
 
     fn parse_expr(&mut self) -> Result<Expression, ParserError> {
@@ -139,14 +139,26 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
             let x = self.parse_atom().ok_or(expected("an atom"))?;
             let y = self.parse_atom().ok_or(expected("an atom"))?;
             self.expect_token(&Token::Paren(Bracket::RParen))?;
-            Ok(Expression::Operate(op, x, y))
-        } else if let Some(Token::Identifier(func)) = self.consume_token() {
+            return Ok(Expression::Operate(op, x, y));
+        }
+        let token = self.consume_token();
+        if let Some(Token::Identifier(func)) = token {
             let mut args = vec![];
             while let Some(arg) = self.parse_atom() {
                 args.push(arg);
             }
             self.expect_token(&Token::Paren(Bracket::RParen))?;
-            Ok(Expression::Apply(func.clone(), args))
+            Ok(Expression::Call(func.clone(), args))
+        } else if let Some(Token::Keyword(Keyword::Apply)) = token {
+            let Some(Token::Identifier(func)) = self.consume_token() else {
+                return Err(expected("a function to apply to"));
+            };
+            let mut args = vec![];
+            while let Some(arg) = self.parse_atom() {
+                args.push(arg);
+            }
+            self.expect_token(&Token::Paren(Bracket::RParen))?;
+            Ok(Expression::Apply(func, args))
         } else {
             Err(expected("a function or operator"))
         }

@@ -7,8 +7,10 @@ pub struct Definition {
 pub enum Expression {
     Unit(Atom),
     Let(String, Box<Expression>, Box<Expression>),
-    // Function application
+    // Unknown function application (variable)
     Apply(String, Vec<Atom>),
+    // Known function application (toplevel)
+    Call(String, Vec<Atom>),
     // Simple match statement, no patterns
     Match(Atom, Vec<(usize, Expression)>, Option<Box<Expression>>),
     // Primitive operations

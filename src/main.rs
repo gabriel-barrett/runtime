@@ -12,7 +12,7 @@ fn (id x) {
 }
 
 fn (flip f x y) {
-  (f y x)
+  (apply f y x)
 }
 
 fn (polynomial x) {

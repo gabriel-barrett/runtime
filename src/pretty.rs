@@ -82,6 +82,12 @@ fn fmt_expr(
             fmt_expr(f, body, ident, true)
         }
         Expression::Apply(func, xs) => {
+            let mut args = Vec::with_capacity(xs.len() + 1);
+            args.push(func.clone());
+            xs.iter().map(atom_to_str).for_each(|s| args.push(s));
+            fmt_app(f, &"apply".into(), &args)
+        }
+        Expression::Call(func, xs) => {
             let xs = xs.iter().map(atom_to_str).collect::<Vec<_>>();
             fmt_app(f, func, &xs)
         }
@@ -154,6 +160,7 @@ impl fmt::Debug for Pretty<&Token> {
             Token::Keyword(Keyword::Fn) => write!(f, "fn"),
             Token::Keyword(Keyword::Let) => write!(f, "fn"),
             Token::Keyword(Keyword::Match) => write!(f, "match"),
+            Token::Keyword(Keyword::Apply) => write!(f, "apply"),
             Token::Identifier(name) => write!(f, "{}", name),
             Token::Symbol(c) => write!(f, "{}", c.to_char()),
             Token::Number(num) => write!(f, "{}", num),

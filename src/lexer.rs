@@ -5,6 +5,7 @@ pub enum Keyword {
     Fn,
     Let,
     Match,
+    Apply,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -144,6 +145,7 @@ impl<'a> Scanner<'a> {
             "fn" => Some(Token::Keyword(Keyword::Fn)),
             "let" => Some(Token::Keyword(Keyword::Let)),
             "match" => Some(Token::Keyword(Keyword::Match)),
+            "apply" => Some(Token::Keyword(Keyword::Apply)),
             _ => Some(Token::Identifier(res.into())),
         }
     }
