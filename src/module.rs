@@ -19,6 +19,8 @@ impl Module {
     }
 }
 
+// Expressions must be SSA, applications and function arguments cannot be greater than size `ARGS_MAX_SIZE`
+
 fn check(top: &HashMap<String, Definition>) {
     top.iter().for_each(|(name, def)| check_def(name, def, top));
 }
@@ -27,23 +29,33 @@ fn check_def(name: &str, def: &Definition, top: &HashMap<String, Definition>) {
     assert_eq!(name, def.name.as_str());
     assert!(
         def.args.len() <= ARGS_MAX_SIZE,
-        "function `{name}` has more than {ARGS_MAX_SIZE} arguments"
+        "Function `{name}` has more than {ARGS_MAX_SIZE} arguments"
     );
-    let vars = &mut def.args.clone();
+    let vars = &mut HashSet::new();
+    for arg in def.args.iter() {
+        insert_unique(arg, vars);
+    }
     check_expr(&def.body, vars, top);
 }
 
-fn check_expr(expr: &Expression, vars: &mut Vec<String>, top: &HashMap<String, Definition>) {
+fn is_bound(x: &String, vars: &HashSet<String>) {
+    assert!(vars.contains(x), "Unbound variable `{x}`");
+}
+
+fn insert_unique(x: &String, vars: &mut HashSet<String>) {
+    assert!(
+        vars.insert(x.clone()),
+        "Variable `{x}` has already been defined. Functions are supposed to be in SSA"
+    );
+}
+
+fn check_expr(expr: &Expression, vars: &mut HashSet<String>, top: &HashMap<String, Definition>) {
     match expr {
-        Expression::Unit(Atom::Var(x)) => {
-            assert!(vars.contains(x), "unbound variable `{x}`");
-        }
+        Expression::Unit(Atom::Var(x)) => is_bound(x, vars),
         Expression::Unit(Atom::Lit(_)) => {}
         Expression::Let(name, val, body) => {
-            let vars_init_len = vars.len();
             check_expr(val, vars, top);
-            vars.truncate(vars_init_len);
-            vars.push(name.clone());
+            insert_unique(name, vars);
             check_expr(body, vars, top);
         }
         Expression::Apply(closure, args) => {
@@ -51,34 +63,34 @@ fn check_expr(expr: &Expression, vars: &mut Vec<String>, top: &HashMap<String, D
                 // the closure is also part of the argument of apply so
                 // `args` should be strictly less than `ARGS_MAX_SIZE`
                 args.len() < ARGS_MAX_SIZE,
-                "application has more than {ARGS_MAX_SIZE} arguments"
+                "Application has more than {ARGS_MAX_SIZE} arguments"
             );
-            assert!(vars.contains(closure), "unbound variable `{closure}`");
+            is_bound(closure, vars);
             for arg in args {
                 if let Atom::Var(var) = arg {
-                    assert!(vars.contains(var), "unbound variable `{var}`");
+                    is_bound(var, vars);
                 }
             }
         }
         Expression::Call(func, args) => {
             assert!(
                 args.len() <= ARGS_MAX_SIZE,
-                "application has more than {ARGS_MAX_SIZE} arguments"
+                "Application has more than {ARGS_MAX_SIZE} arguments"
             );
-            assert!(top.contains_key(func), "unbound function `{func}`");
+            assert!(top.contains_key(func), "Unbound function `{func}`");
             for arg in args {
                 if let Atom::Var(var) = arg {
-                    assert!(vars.contains(var), "unbound variable `{var}`");
+                    is_bound(var, vars);
                 }
             }
         }
         Expression::Match(atom, matches, default) => {
             if let Atom::Var(var) = atom {
-                assert!(vars.contains(var), "unbound variable `{var}`");
+                is_bound(var, vars)
             }
             let mut unique_pat = HashSet::new();
             for (pat, exp) in matches {
-                assert!(unique_pat.insert(pat), "repeated pattern in match");
+                assert!(unique_pat.insert(pat), "Repeated pattern in match");
                 check_expr(exp, vars, top);
             }
             if let Some(exp) = default {
@@ -87,10 +99,10 @@ fn check_expr(expr: &Expression, vars: &mut Vec<String>, top: &HashMap<String, D
         }
         Expression::Operate(_, x, y) => {
             if let Atom::Var(var) = x {
-                assert!(vars.contains(var), "unbound variable `{var}`");
+                is_bound(var, vars);
             }
             if let Atom::Var(var) = y {
-                assert!(vars.contains(var), "unbound variable `{var}`");
+                is_bound(var, vars);
             }
         }
     }
