@@ -5,6 +5,7 @@ mod module;
 mod parser;
 mod pretty;
 
+use interpreter::State;
 use lexer::Scanner as LexerScanner;
 use module::Module;
 use parser::Scanner as ParserScanner;
@@ -37,6 +38,12 @@ fn (not x) {
     }
   }
 }
+
+fn (main) {
+  let one = (not 0);
+  let five = (+ 4 one);
+  (polynomial five)
+}
 ";
 
 fn main() {
@@ -47,4 +54,8 @@ fn main() {
     let module = Module::new(definitions);
     let top = module.toplevel().iter();
     top.for_each(|(_, def)| println!("{:?}", def.pretty()));
+
+    let mut state = State::new();
+    let val = state.run(&module);
+    println!("main: {:?}", val);
 }

@@ -7,8 +7,8 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 type Ptr = u32;
-#[derive(Clone, Copy)]
-enum Value {
+#[derive(Clone, Copy, Debug)]
+pub enum Value {
     Num(usize),
     Ptr(Ptr),
 }
@@ -67,7 +67,7 @@ fn push_within_capacity<T>(mem: &mut Vec<T>, val: T, msg: &str) {
     mem.push(val)
 }
 
-struct State {
+pub struct State {
     heap: Vec<HeapCell>,
     stack: Vec<Frame>,
     frame: Frame,
@@ -96,6 +96,14 @@ impl Operation {
 }
 
 impl State {
+    pub fn new() -> Self {
+        Self {
+            frame: Frame::new(),
+            heap: alloc_heap(),
+            stack: alloc_stack(),
+        }
+    }
+
     fn alloc_on_stack(&mut self, reg: Frame) {
         push_within_capacity(&mut self.stack, reg, "Stack has overflown")
     }
@@ -202,5 +210,11 @@ impl State {
                 Value::Num(op.run(x_num, y_num))
             }
         }
+    }
+
+    pub fn run(&mut self, module: &Module) -> Value {
+        let main = module.get("main").expect("Expected a `main` function");
+        assert_eq!(main.params.len(), 0, "`main` should take 0 argumets");
+        self.eval(&main.body, module)
     }
 }
