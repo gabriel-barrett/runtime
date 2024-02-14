@@ -9,7 +9,11 @@ type Ptr = u32;
 #[derive(Clone, Copy)]
 enum Value {
     Num(usize),
-    Papp(Ptr),
+    Ptr(Ptr),
+}
+
+enum HeapCell {
+    Papp(String, Vec<Value>),
 }
 
 impl Value {
@@ -22,7 +26,7 @@ impl Value {
 
     fn expect_papp(self) -> Ptr {
         match self {
-            Value::Papp(x) => x,
+            Value::Ptr(x) => x,
             _ => panic!("Expected partial application"),
         }
     }
@@ -47,7 +51,7 @@ impl Frame {
 static INIT_HEAP_SIZE: usize = 1 << 24;
 static INIT_STACK_SIZE: usize = 1 << 18;
 
-fn alloc_heap() -> Vec<Value> {
+fn alloc_heap() -> Vec<HeapCell> {
     Vec::with_capacity(INIT_HEAP_SIZE)
 }
 
@@ -63,7 +67,7 @@ fn push_within_capacity<T>(mem: &mut Vec<T>, val: T, msg: &str) {
 }
 
 struct State {
-    heap: Vec<Value>,
+    heap: Vec<HeapCell>,
     stack: Vec<Frame>,
     frame: Frame,
 }
@@ -95,8 +99,10 @@ impl State {
         push_within_capacity(&mut self.stack, reg, "Stack has overflown")
     }
 
-    fn alloc_on_heap(&mut self, val: Value) {
-        push_within_capacity(&mut self.heap, val, "Memory has run out")
+    fn alloc_on_heap(&mut self, obj: HeapCell) -> Ptr {
+        let ptr = self.heap.len();
+        push_within_capacity(&mut self.heap, obj, "Memory has run out");
+        ptr as Ptr
     }
 
     fn retrieve_atom(&self, atom: &Atom) -> Value {
@@ -134,6 +140,12 @@ impl State {
             }
             Expression::Apply(f, args) => {
                 todo!()
+            }
+            Expression::Papp(f, args) => {
+                let args = args.iter().map(|arg| self.retrieve_atom(arg)).collect();
+                let papp = HeapCell::Papp(f.to_owned(), args);
+                let ptr = self.alloc_on_heap(papp);
+                Value::Ptr(ptr)
             }
             Expression::Call(f, args) => self.call(f, args, module),
             Expression::Match(atom, cases, def) => {

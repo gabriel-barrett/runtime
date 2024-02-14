@@ -159,6 +159,16 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
             }
             self.expect_token(&Token::Paren(Bracket::RParen))?;
             Ok(Expression::Apply(func, args))
+        } else if let Some(Token::Keyword(Keyword::Papp)) = token {
+            let Some(Token::Identifier(func)) = self.consume_token() else {
+                return Err(expected("a function to partially apply to"));
+            };
+            let mut args = vec![];
+            while let Some(arg) = self.parse_atom() {
+                args.push(arg);
+            }
+            self.expect_token(&Token::Paren(Bracket::RParen))?;
+            Ok(Expression::Papp(func, args))
         } else {
             Err(expected("a function or operator"))
         }

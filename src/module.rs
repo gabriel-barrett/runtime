@@ -87,6 +87,24 @@ fn check_expr(expr: &Expression, vars: &mut HashSet<String>, top: &HashMap<Strin
                 }
             }
         }
+        Expression::Papp(func, args) => {
+            assert!(
+                args.len() < ARGS_MAX_SIZE,
+                "Partial application has more than {ARGS_MAX_SIZE} arguments"
+            );
+            let func = top
+                .get(func)
+                .unwrap_or_else(|| panic!("Unbound function `{func}`"));
+            assert!(
+                func.params.len() > args.len(),
+                "Partial application exceeds function arity"
+            );
+            for arg in args {
+                if let Atom::Var(var) = arg {
+                    is_bound(var, vars);
+                }
+            }
+        }
         Expression::Match(atom, matches, default) => {
             if let Atom::Var(var) = atom {
                 is_bound(var, vars)

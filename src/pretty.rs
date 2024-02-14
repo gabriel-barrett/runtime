@@ -91,6 +91,12 @@ fn fmt_expr(
             let xs = xs.iter().map(atom_to_str).collect::<Vec<_>>();
             fmt_app(f, func, &xs)
         }
+        Expression::Papp(func, xs) => {
+            let mut args = Vec::with_capacity(xs.len() + 1);
+            args.push(func.clone());
+            xs.iter().map(atom_to_str).for_each(|s| args.push(s));
+            fmt_app(f, &"papp".into(), &args)
+        }
         Expression::Match(x, matches, default) => {
             write!(f, "match {} {{", atom_to_str(x))?;
             for (num, exp) in matches {
@@ -161,6 +167,7 @@ impl fmt::Debug for Pretty<&Token> {
             Token::Keyword(Keyword::Let) => write!(f, "fn"),
             Token::Keyword(Keyword::Match) => write!(f, "match"),
             Token::Keyword(Keyword::Apply) => write!(f, "apply"),
+            Token::Keyword(Keyword::Papp) => write!(f, "papp"),
             Token::Identifier(name) => write!(f, "{}", name),
             Token::Symbol(c) => write!(f, "{}", c.to_char()),
             Token::Number(num) => write!(f, "{}", num),
