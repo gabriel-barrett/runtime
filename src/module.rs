@@ -17,6 +17,10 @@ impl Module {
     pub fn toplevel(&self) -> &HashMap<String, Definition> {
         &self.toplevel
     }
+
+    pub fn get(&self, name: &str) -> Option<&Definition> {
+        self.toplevel.get(name)
+    }
 }
 
 // Expressions must be SSA, applications and function arguments cannot be greater than size `ARGS_MAX_SIZE`

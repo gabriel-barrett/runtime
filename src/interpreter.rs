@@ -3,6 +3,7 @@ use crate::{
     module::Module,
 };
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 type Ptr = u32;
@@ -24,7 +25,7 @@ impl Value {
         }
     }
 
-    fn expect_papp(self) -> Ptr {
+    fn expect_ptr(self) -> Ptr {
         match self {
             Value::Ptr(x) => x,
             _ => panic!("Expected partial application"),
@@ -43,8 +44,8 @@ impl Frame {
         self.0.insert(reg, val);
     }
 
-    fn get(&self, reg: &str) -> Option<&Value> {
-        self.0.get(reg)
+    fn get(&self, reg: &str) -> Value {
+        *self.0.get(reg).unwrap()
     }
 }
 
@@ -105,20 +106,22 @@ impl State {
         ptr as Ptr
     }
 
+    fn retrieve_ptr(&self, ptr: Ptr) -> &HeapCell {
+        &self.heap[ptr as usize]
+    }
+
     fn retrieve_atom(&self, atom: &Atom) -> Value {
         match atom {
-            Atom::Var(x) => *self.frame.get(x).unwrap(),
+            Atom::Var(x) => self.frame.get(x),
             Atom::Lit(x) => Value::Num(*x),
         }
     }
 
-    fn call(&mut self, func: &str, args: &[Atom], module: &Module) -> Value {
-        let func = module.toplevel().get(func).unwrap();
+    fn call(&mut self, func: &str, args: &[Value], module: &Module) -> Value {
+        let func = module.get(func).unwrap();
         let mut frame = Frame::new();
-
-        for (param, atom) in func.params.iter().zip(args.iter()) {
-            let value = self.retrieve_atom(atom);
-            frame.insert(param.to_owned(), value);
+        for (param, value) in func.params.iter().zip(args.iter()) {
+            frame.insert(param.to_owned(), *value);
         }
 
         std::mem::swap(&mut frame, &mut self.frame);
@@ -130,6 +133,31 @@ impl State {
         val
     }
 
+    fn apply(&mut self, ptr: Ptr, more_args: &[Value], module: &Module) -> Value {
+        let HeapCell::Papp(func, init_args) = self.retrieve_ptr(ptr);
+        let args = {
+            let mut args = init_args.clone();
+            args.extend_from_slice(more_args);
+            args
+        };
+        let def = module.get(func).unwrap();
+        match args.len().cmp(&def.params.len()) {
+            Ordering::Less => {
+                let papp = HeapCell::Papp(func.to_owned(), args);
+                let ptr = self.alloc_on_heap(papp);
+                Value::Ptr(ptr)
+            }
+            Ordering::Equal => self.call(&func.clone(), &args, module),
+            Ordering::Greater => {
+                let call_args = &args[0..def.params.len()];
+                let val = self.call(&func.clone(), call_args, module);
+                let ptr = val.expect_ptr();
+                let rest = &args[def.params.len()..];
+                self.apply(ptr, rest, module)
+            }
+        }
+    }
+
     fn eval(&mut self, expr: &Expression, module: &Module) -> Value {
         match expr {
             Expression::Unit(atom) => self.retrieve_atom(atom),
@@ -138,8 +166,20 @@ impl State {
                 self.frame.insert(x.to_owned(), v_val);
                 self.eval(b, module)
             }
+            Expression::Call(f, args) => {
+                let args = args
+                    .iter()
+                    .map(|arg| self.retrieve_atom(arg))
+                    .collect::<Vec<_>>();
+                self.call(f, &args, module)
+            }
             Expression::Apply(f, args) => {
-                todo!()
+                let ptr = self.frame.get(f).expect_ptr();
+                let args = args
+                    .iter()
+                    .map(|arg| self.retrieve_atom(arg))
+                    .collect::<Vec<_>>();
+                self.apply(ptr, &args, module)
             }
             Expression::Papp(f, args) => {
                 let args = args.iter().map(|arg| self.retrieve_atom(arg)).collect();
@@ -147,7 +187,6 @@ impl State {
                 let ptr = self.alloc_on_heap(papp);
                 Value::Ptr(ptr)
             }
-            Expression::Call(f, args) => self.call(f, args, module),
             Expression::Match(atom, cases, def) => {
                 let x = self.retrieve_atom(atom).expect_num();
                 let branch = cases
