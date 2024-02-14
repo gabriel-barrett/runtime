@@ -97,11 +97,11 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
     }
 
     fn parse_def_inner(&mut self) -> Result<Definition, ParserError> {
-        let (name, args) = self.parse_function_header()?;
+        let (name, params) = self.parse_function_header()?;
         self.expect_token(&Token::Paren(Bracket::LBrace))?;
         let body = self.parse_expr()?;
         self.expect_token(&Token::Paren(Bracket::RBrace))?;
-        Ok(Definition { name, args, body })
+        Ok(Definition { name, params, body })
     }
 
     fn parse_expr(&mut self) -> Result<Expression, ParserError> {

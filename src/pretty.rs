@@ -122,7 +122,7 @@ fn fmt_expr(
 
 fn fmt_def(f: &mut fmt::Formatter<'_>, def: &Definition) -> fmt::Result {
     write!(f, "fn ")?;
-    fmt_app(f, &def.name, &def.args)?;
+    fmt_app(f, &def.name, &def.params)?;
     write!(f, " {{")?;
     fmt_expr(f, &def.body, 1, true)?;
     write!(f, "\n}}")

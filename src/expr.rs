@@ -1,6 +1,6 @@
 pub struct Definition {
     pub name: String,
-    pub args: Vec<String>,
+    pub params: Vec<String>,
     pub body: Expression,
 }
 

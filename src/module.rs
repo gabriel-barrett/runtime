@@ -28,11 +28,11 @@ fn check(top: &HashMap<String, Definition>) {
 fn check_def(name: &str, def: &Definition, top: &HashMap<String, Definition>) {
     assert_eq!(name, def.name.as_str());
     assert!(
-        def.args.len() <= ARGS_MAX_SIZE,
+        def.params.len() <= ARGS_MAX_SIZE,
         "Function `{name}` has more than {ARGS_MAX_SIZE} arguments"
     );
     let vars = &mut HashSet::new();
-    for arg in def.args.iter() {
+    for arg in def.params.iter() {
         insert_unique(arg, vars);
     }
     check_expr(&def.body, vars, top);
@@ -77,7 +77,10 @@ fn check_expr(expr: &Expression, vars: &mut HashSet<String>, top: &HashMap<Strin
                 args.len() <= ARGS_MAX_SIZE,
                 "Application has more than {ARGS_MAX_SIZE} arguments"
             );
-            assert!(top.contains_key(func), "Unbound function `{func}`");
+            let func = top
+                .get(func)
+                .unwrap_or_else(|| panic!("Unbound function `{func}`"));
+            assert_eq!(func.params.len(), args.len(), "Wrong number of arguments");
             for arg in args {
                 if let Atom::Var(var) = arg {
                     is_bound(var, vars);
