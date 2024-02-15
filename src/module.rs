@@ -100,7 +100,7 @@ fn check_expr(expr: &Expression, vars: &mut HashSet<String>, top: &HashMap<Strin
                 .get(func)
                 .unwrap_or_else(|| panic!("Unbound function `{func}`"));
             assert!(
-                func.params.len() > args.len(),
+                func.params.len() >= args.len(),
                 "Partial application exceeds function arity"
             );
             for arg in args {
