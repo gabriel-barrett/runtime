@@ -1,9 +1,11 @@
 mod expr;
+mod interpreter;
 mod lexer;
 mod module;
 mod parser;
 mod pretty;
 
+use interpreter::State;
 use lexer::Scanner as LexerScanner;
 use module::Module;
 use parser::Scanner as ParserScanner;
@@ -36,6 +38,42 @@ fn (not x) {
     }
   }
 }
+
+fn (nil n c) {
+  n
+}
+
+fn (cons x xs n c) {
+  (apply c x xs)
+}
+
+fn (buildList n) {
+  match n {
+    0 => {
+      (papp nil)
+    }
+    _ => {
+      let m = (- n 1);
+      let tail = (buildList m);
+      (papp cons n tail)
+    }
+  }
+}
+
+fn (sumList xs) {
+  let sum = (papp sumListAux);
+  (apply xs 0 sum)
+}
+
+fn (sumListAux x ys) {
+  let y = (sumList ys);
+  (+ x y)
+}
+
+fn (main) {
+  let xs = (buildList 100);
+  (sumList xs)
+}
 ";
 
 fn main() {
@@ -45,5 +83,9 @@ fn main() {
     let definitions = parser_scanner.map(|m| m.unwrap());
     let module = Module::new(definitions);
     let top = module.toplevel().iter();
-    top.for_each(|(_, def)| println!("{:?}", def.pretty()));
+    top.for_each(|(_, def)| println!("{:?}\n", def.pretty()));
+
+    let mut state = State::new();
+    let val = state.run(&module);
+    println!("main: {:?}", val);
 }

@@ -1,6 +1,6 @@
 pub struct Definition {
     pub name: String,
-    pub args: Vec<String>,
+    pub params: Vec<String>,
     pub body: Expression,
 }
 
@@ -11,6 +11,8 @@ pub enum Expression {
     Apply(String, Vec<Atom>),
     // Known function application (toplevel)
     Call(String, Vec<Atom>),
+    // Partial application object
+    Papp(String, Vec<Atom>),
     // Simple match statement, no patterns
     Match(Atom, Vec<(usize, Expression)>, Option<Box<Expression>>),
     // Primitive operations

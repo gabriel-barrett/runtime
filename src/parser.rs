@@ -97,11 +97,11 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
     }
 
     fn parse_def_inner(&mut self) -> Result<Definition, ParserError> {
-        let (name, args) = self.parse_function_header()?;
+        let (name, params) = self.parse_function_header()?;
         self.expect_token(&Token::Paren(Bracket::LBrace))?;
         let body = self.parse_expr()?;
         self.expect_token(&Token::Paren(Bracket::RBrace))?;
-        Ok(Definition { name, args, body })
+        Ok(Definition { name, params, body })
     }
 
     fn parse_expr(&mut self) -> Result<Expression, ParserError> {
@@ -159,6 +159,16 @@ impl<Iter: Iterator<Item = Token>> Scanner<Iter> {
             }
             self.expect_token(&Token::Paren(Bracket::RParen))?;
             Ok(Expression::Apply(func, args))
+        } else if let Some(Token::Keyword(Keyword::Papp)) = token {
+            let Some(Token::Identifier(func)) = self.consume_token() else {
+                return Err(expected("a function to partially apply to"));
+            };
+            let mut args = vec![];
+            while let Some(arg) = self.parse_atom() {
+                args.push(arg);
+            }
+            self.expect_token(&Token::Paren(Bracket::RParen))?;
+            Ok(Expression::Papp(func, args))
         } else {
             Err(expected("a function or operator"))
         }
