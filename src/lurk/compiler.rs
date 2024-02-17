@@ -1,12 +1,12 @@
 #![allow(dead_code)]
-#![allow(unused_imports)]
+#![allow(unused_variables)]
 
 use std::collections::HashMap;
 
 use crate::expr::{Atom, Definition, Expression};
 use crate::module::Module;
 
-use lurk::lem::{Block, Ctrl, Func, Op, Var};
+use lurk::lem::{Block, Ctrl, Func, Lit, Op, Var};
 
 pub struct Coroutine {
     func: Func,
@@ -52,8 +52,7 @@ fn compile_definition(
     let func = Func {
         name,
         input_params,
-        // TODO
-        output_size: 0,
+        output_size: 1,
         body,
         slots_count,
     };
@@ -65,6 +64,56 @@ fn compile_definition(
     }
 }
 
-fn compile_expression(body: &Expression, index_map: &HashMap<&String, usize>) -> Block {
-    todo!()
+fn compile_expression(expr: &Expression, index_map: &HashMap<&String, usize>) -> Block {
+    let mut ops = vec![];
+    let mut rest_expr = expr;
+    while let Expression::Let(name, val, body) = rest_expr {
+        rest_expr = body;
+        let var = Var::new(name);
+        let op = match val.as_ref() {
+            Expression::Unit(Atom::Var(..)) => {
+                panic!("TODO: rename operation in LEM")
+            }
+            Expression::Unit(Atom::Lit(x)) => Op::Lit(var, Lit::Num(*x as u128)),
+            Expression::Call(..) => {
+                panic!("TODO: coroutine call in LEM")
+            }
+            Expression::Papp(..) => {
+                panic!("TODO: partial application")
+            }
+            Expression::Apply(..) => {
+                panic!("TODO: apply coroutine")
+            }
+            Expression::Operate(_, x, y) => {
+                todo!()
+            }
+            _ => {
+                panic!("TODO: LEM does not yet support inner blocks")
+            }
+        };
+        ops.push(op);
+    }
+    let ctrl = match rest_expr {
+        Expression::Let(..) => unreachable!(),
+        Expression::Unit(Atom::Var(x)) => Ctrl::Return(vec![Var::new(x)]),
+        Expression::Unit(Atom::Lit(_)) => {
+            todo!()
+        }
+        Expression::Apply(closure, args) => {
+            todo!()
+        }
+        Expression::Call(func, args) => {
+            todo!()
+        }
+        Expression::Papp(func, args) => {
+            todo!()
+        }
+        Expression::Match(atom, matches, default) => {
+            todo!()
+        }
+        Expression::Operate(_, x, y) => {
+            todo!()
+        }
+    };
+    Block { ops, ctrl }
 }
