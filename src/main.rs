@@ -1,6 +1,7 @@
 mod expr;
 mod interpreter;
 mod lexer;
+mod lurk;
 mod module;
 mod parser;
 mod pretty;
