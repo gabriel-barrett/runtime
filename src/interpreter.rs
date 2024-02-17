@@ -9,7 +9,7 @@ use std::collections::HashMap;
 type Ptr = u32;
 #[derive(Clone, Copy, Debug)]
 pub enum Value {
-    Num(usize),
+    Num(u64),
     Ptr(Ptr),
 }
 
@@ -18,7 +18,7 @@ enum HeapCell {
 }
 
 impl Value {
-    fn expect_num(self) -> usize {
+    fn expect_num(self) -> u64 {
         match self {
             Value::Num(x) => x,
             _ => panic!("Expected number"),
@@ -74,18 +74,18 @@ pub struct State {
 }
 
 impl Operation {
-    fn run(&self, x: usize, y: usize) -> usize {
+    fn run(&self, x: u64, y: u64) -> u64 {
         match self {
             Operation::Add => x + y,
             Operation::Sub => x - y,
             Operation::Mul => x * y,
             Operation::Div => x / y,
             Operation::Mod => x % y,
-            Operation::Eq => (x == y) as usize,
-            Operation::Lt => (x < y) as usize,
-            Operation::Le => (x <= y) as usize,
-            Operation::Gt => (x > y) as usize,
-            Operation::Ge => (x >= y) as usize,
+            Operation::Eq => (x == y) as u64,
+            Operation::Lt => (x < y) as u64,
+            Operation::Le => (x <= y) as u64,
+            Operation::Gt => (x > y) as u64,
+            Operation::Ge => (x >= y) as u64,
             Operation::And => x & y,
             Operation::Or => x | y,
             Operation::Xor => x ^ y,
