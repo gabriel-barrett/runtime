@@ -69,7 +69,7 @@ impl Bracket {
 pub enum Token {
     Keyword(Keyword),
     Identifier(String),
-    Number(usize),
+    Number(u64),
     Symbol(Symbol),
     Paren(Bracket),
 }

@@ -14,14 +14,14 @@ pub enum Expression {
     // Partial application object
     Papp(String, Vec<Atom>),
     // Simple match statement, no patterns
-    Match(Atom, Vec<(usize, Expression)>, Option<Box<Expression>>),
+    Match(Atom, Vec<(u64, Expression)>, Option<Box<Expression>>),
     // Primitive operations
     Operate(Operation, Atom, Atom),
 }
 
 pub enum Atom {
     Var(String),
-    Lit(usize),
+    Lit(u64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
