@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use crate::expr::{Atom, Definition, Expression};
 use crate::module::Module;
 
-use lurk::lem::{Block, Ctrl, Func, Lit, Op, Var};
+use indexmap::IndexMap;
+use lurk::lem::{Block, Ctrl, Func, Lit, LitType, Op, Var};
 
 pub struct Coroutine {
     func: Func,
@@ -46,7 +47,7 @@ fn compile_definition(
 ) -> Coroutine {
     let query_index = *index_map.get(name).unwrap();
     let name = name.clone();
-    let body = compile_expression(&def.body, index_map);
+    let body = compile_expression(&def.body, index_map, &mut 0);
     let slots_count = body.count_slots();
     let input_params = def.params.iter().map(|x| Var::new(x)).collect();
     let func = Func {
@@ -64,7 +65,27 @@ fn compile_definition(
     }
 }
 
-fn compile_expression(expr: &Expression, index_map: &HashMap<&String, usize>) -> Block {
+fn new_var(uniq: &mut usize) -> Var {
+    *uniq += 1;
+    Var::new(&format!("@{}", uniq))
+}
+
+fn atom_to_var(atom: &Atom, uniq: &mut usize, ops: &mut Vec<Op>) -> Var {
+    match atom {
+        Atom::Var(x) => Var::new(x),
+        Atom::Lit(x) => {
+            let var = new_var(uniq);
+            ops.push(Op::Lit(var.clone(), Lit::Num(*x as u128)));
+            var
+        }
+    }
+}
+
+fn compile_expression(
+    expr: &Expression,
+    index_map: &HashMap<&String, usize>,
+    uniq: &mut usize,
+) -> Block {
     let mut ops = vec![];
     let mut rest_expr = expr;
     while let Expression::Let(name, val, body) = rest_expr {
@@ -95,21 +116,33 @@ fn compile_expression(expr: &Expression, index_map: &HashMap<&String, usize>) ->
     }
     let ctrl = match rest_expr {
         Expression::Let(..) => unreachable!(),
-        Expression::Unit(Atom::Var(x)) => Ctrl::Return(vec![Var::new(x)]),
-        Expression::Unit(Atom::Lit(_)) => {
-            todo!()
+        Expression::Unit(atom) => Ctrl::Return(vec![atom_to_var(atom, uniq, &mut ops)]),
+        Expression::Call(..) => {
+            panic!("TODO: coroutine call in LEM")
         }
-        Expression::Apply(closure, args) => {
-            todo!()
+        Expression::Papp(..) => {
+            panic!("TODO: partial application")
         }
-        Expression::Call(func, args) => {
-            todo!()
-        }
-        Expression::Papp(func, args) => {
-            todo!()
+        Expression::Apply(..) => {
+            panic!("TODO: apply coroutine")
         }
         Expression::Match(atom, matches, default) => {
-            todo!()
+            let var = atom_to_var(atom, uniq, &mut ops);
+            let lit_type = LitType::Num;
+            let mut branches = IndexMap::new();
+            for (val, branch) in matches {
+                let block = compile_expression(branch, index_map, uniq);
+                let lit = Lit::Num(*val as u128);
+                branches.insert(lit, block);
+            }
+            let default = match default {
+                Some(branch) => {
+                    let block = compile_expression(branch, index_map, uniq);
+                    Some(block.into())
+                }
+                None => None,
+            };
+            Ctrl::MatchValue(var, lit_type, branches, default)
         }
         Expression::Operate(_, x, y) => {
             todo!()
