@@ -1,3 +1,4 @@
+mod bytecode;
 mod expr;
 mod interpreter;
 mod lexer;
