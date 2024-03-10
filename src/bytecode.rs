@@ -17,9 +17,12 @@ pub enum Bytecode {
     ARGI(NUM, NUM),
     RETURN(REG),
     RETURNI(NUM),
+    ALLOC(REG, REG),
+    ALLOCI(REG, NUM),
     BRANCH(NUM),
-    LOAD(NUM),
-    STORE(NUM),
+    LOAD(REG, NUM, REG),
+    STORE(REG, NUM, REG),
+    STOREI(REG, NUM, NUM),
 }
 
 pub struct Program {
@@ -27,8 +30,18 @@ pub struct Program {
     code: Vec<Bytecode>,
 }
 
-fn compile_module(module: &Module) -> Vec<Bytecode> {
-    todo!()
+fn compile_module(module: &Module) -> Vec<Vec<Bytecode>> {
+    let mut programs = vec![];
+    for (pos, (name, def)) in module.toplevel().iter().enumerate() {
+        let expr = &def.body;
+        let mut code = vec![];
+        let reg_map = &mut |_name: &String| todo!();
+        let top_map = &mut |_name: &String| todo!();
+        let uniq = &mut 0;
+        compile_expression(expr, &mut code, name, pos, uniq, reg_map, top_map);
+        programs.push(code);
+    }
+    programs
 }
 
 fn compile_expression(
@@ -36,6 +49,7 @@ fn compile_expression(
     code: &mut Vec<Bytecode>,
     rec_name: &str,
     rec_pos: usize,
+    uniq: &mut usize,
     reg_map: &mut impl FnMut(&String) -> REG,
     top_map: &mut impl FnMut(&String) -> usize,
 ) {
@@ -43,7 +57,7 @@ fn compile_expression(
         Expression::Unit(Atom::Lit(s)) => code.push(RETURNI(*s)),
         Expression::Unit(Atom::Var(s)) => {
             let r = reg_map(s);
-            code.push(RETURN(r))
+            code.push(RETURN(r));
         }
         Expression::Call(name, atoms) => {
             let func = if name == rec_name {
@@ -52,7 +66,29 @@ fn compile_expression(
                 top_map(name) as NUM
             };
             push_arguments(atoms, code, reg_map);
-            code.push(CALLI(func))
+            code.push(CALLI(func));
+        }
+        Expression::Papp(name, args) => {
+            let func = if name == rec_name {
+                rec_pos as NUM
+            } else {
+                top_map(name) as NUM
+            };
+            let n = args.len() as NUM + 1;
+            let ptr = new_register(uniq, reg_map);
+            code.push(ALLOCI(ptr, n));
+            code.push(STOREI(ptr, 0, func));
+            for (i, arg) in args.iter().enumerate() {
+                let pos = i as NUM + 1;
+                match arg {
+                    Atom::Var(s) => {
+                        let r = reg_map(s);
+                        code.push(STORE(ptr, pos, r));
+                    }
+                    Atom::Lit(s) => code.push(STOREI(ptr, pos, *s)),
+                };
+            }
+            code.push(RETURN(ptr));
         }
         _ => todo!(),
     }
@@ -77,4 +113,10 @@ fn push_arguments(
             }
         }
     }
+}
+
+fn new_register(uniq: &mut usize, reg_map: &mut impl FnMut(&String) -> REG) -> REG {
+    let s = format!("x#{uniq}");
+    *uniq += 1;
+    reg_map(&s)
 }
